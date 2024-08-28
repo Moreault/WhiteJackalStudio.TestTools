@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<Version>1.0.0-beta1</Version>
+		<Authors>Mathieu Moreault</Authors>
+		<RepositoryUrl>https://github.com/Moreault/WhiteJackalStudio.TestTools</RepositoryUrl>
+		<PackageProjectUrl>https://github.com/Moreault/WhiteJackalStudio.TestTools</PackageProjectUrl>
+		<Description>Tools for unit testing White Jackal Studio projects</Description>
+		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageIcon>testtools.png</PackageIcon>
+	</PropertyGroup>
+
+	<ItemGroup>
+	  <None Include="..\README.md">
+	    <Pack>True</Pack>
+	    <PackagePath>\</PackagePath>
+	  </None>
+	  <None Include="..\testtools.png">
+	    <Pack>True</Pack>
+	    <PackagePath>\</PackagePath>
+	  </None>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <PackageReference Include="ToolBX.Eloquentest.Dummies" Version="3.0.0-beta1" />
+	</ItemGroup>
+
+
+</Project>
