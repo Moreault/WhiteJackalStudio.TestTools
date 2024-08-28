@@ -1,4 +1,4 @@
-![WhiteJackalStudio.TestTools](https://github.com/Moreault/WhiteJackalStudio.TestTools/blob/master/tools.png)
+![WhiteJackalStudio.TestTools](https://github.com/Moreault/WhiteJackalStudio.TestTools/blob/master/testtools.png)
 # WhiteJackalStudio.TestTools
 
 Tools for unit testing White Jackal Studio projects such as the ToolBX Framework.
