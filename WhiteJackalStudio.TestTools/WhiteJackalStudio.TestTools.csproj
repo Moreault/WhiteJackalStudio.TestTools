@@ -26,7 +26,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <PackageReference Include="ToolBX.Eloquentest.Dummies" Version="3.0.0-beta4" />
+	  <PackageReference Include="ToolBX.Eloquentest.Dummies" Version="3.0.0" />
 	</ItemGroup>
 
 
