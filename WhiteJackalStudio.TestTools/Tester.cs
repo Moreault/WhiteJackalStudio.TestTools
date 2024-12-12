@@ -1,4 +1,6 @@
-﻿namespace WhiteJackalStudio.TestTools;
+﻿using Microsoft.Extensions.DependencyInjection;
+
+namespace WhiteJackalStudio.TestTools;
 
 public abstract class Tester
 {
@@ -200,7 +202,7 @@ public abstract class Tester<T> : Tester where T : class
             AddMock(typeof(IServiceProvider));
         if (!_mocks.ContainsKey(type))
             AddMock(type);
-        GetMock<IServiceProvider>().Setup(x => x.GetService(type)).Returns(_mocks[type].Object);
+        AddToServiceProvider(type, _mocks[type].Object);
     }
 
     /// <summary>
@@ -216,6 +218,8 @@ public abstract class Tester<T> : Tester where T : class
         if (type == null) throw new ArgumentNullException(nameof(type));
         if (instance == null) throw new ArgumentNullException(nameof(instance));
         GetMock<IServiceProvider>().Setup(x => x.GetService(type)).Returns(instance);
+        var genericEnumerable = typeof(IEnumerable<>).MakeGenericType(type);
+        GetMock<IServiceProvider>().Setup(x => x.GetService(genericEnumerable)).Returns(new[] { instance });
     }
 
     /// <summary>
