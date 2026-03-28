@@ -1,6 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-
-namespace WhiteJackalStudio.TestTools;
+﻿namespace WhiteJackalStudio.TestTools;
 
 public abstract class Tester
 {
@@ -11,13 +9,24 @@ public abstract class Tester
     protected JsonSerializerOptions JsonSerializerOptions => _jsonSerializerOptions.Value;
     private Lazy<JsonSerializerOptions> _jsonSerializerOptions = null!;
 
+    /// <summary>
+    /// Used to store information that is provided to unit tests.
+    /// </summary>
+    // ReSharper disable once ReplaceAutoPropertyWithComputedProperty : Automatically set by MSTest, not manually.
+    public TestContext TestContext { get; } = null!;
+
+    // ReSharper disable once UnusedMember.Global : Used by MSTest, not manually.
+    public CancellationToken CancellationToken => TestContext.CancellationToken;
+
     [TestInitialize]
-    public void TestInitializeBase()
+    public async Task TestInitializeBase()
     {
         Dummy = new Dummy();
         Ensure = new Ensure();
-        _jsonSerializerOptions = new(() => new JsonSerializerOptions());
+        _jsonSerializerOptions = new Lazy<JsonSerializerOptions>(() => new JsonSerializerOptions());
+        // ReSharper disable once MethodHasAsyncOverload
         InitializeTest();
+        await InitializeTestAsync();
     }
 
     protected virtual void InitializeTest()
@@ -25,11 +34,18 @@ public abstract class Tester
 
     }
 
+    /// <summary>
+    /// Runs before each test. Override this for async setup logic.
+    /// </summary>
+    protected virtual Task InitializeTestAsync() => Task.CompletedTask;
+
     //Named as such to avoid unintentional shadowing
     [TestCleanup]
-    public void TestCleanupOnBaseClass()
+    public async Task TestCleanupOnBaseClass()
     {
+        // ReSharper disable once MethodHasAsyncOverload
         CleanupTest();
+        await CleanupTestAsync();
     }
 
     /// <summary>
@@ -39,6 +55,11 @@ public abstract class Tester
     {
 
     }
+
+    /// <summary>
+    /// Runs after each test. Override this for async cleanup logic.
+    /// </summary>
+    protected virtual Task CleanupTestAsync() => Task.CompletedTask;
 
     protected TValue? GetFieldValue<TInstance, TValue>(TInstance instance, string fieldName)
     {
@@ -61,9 +82,7 @@ public abstract class Tester
     protected void SetPropertyValue<TInstance, TValue>(TInstance instance, string propertyName, TValue value)
     {
         var propertyInfo = typeof(TInstance).GetSingleProperty(propertyName);
-        propertyInfo = propertyInfo.DeclaringType!.GetProperty(propertyName);
-        propertyInfo!.SetValue(instance, value,
-            BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static | BindingFlags.Instance, null, null, null);
+        propertyInfo.SetValue(instance, value);
     }
 
     protected object? InvokeMethod<T>(T instance, string methodName, params object[] parameters)
@@ -71,9 +90,9 @@ public abstract class Tester
         if (instance == null) throw new ArgumentNullException(nameof(instance));
         if (string.IsNullOrWhiteSpace(methodName)) throw new ArgumentNullException(nameof(methodName));
 
-        var methodInfo = parameters is null || !parameters.Any() ?
+        var methodInfo = parameters.Length == 0 ?
             instance.GetType().GetSingleMethod(methodName) :
-            instance.GetType().GetSingleMethod(x => x.Name == methodName && x.HasParametersAssignableTo(parameters.Select(y => y?.GetType())));
+            instance.GetType().GetSingleMethod(x => x.Name == methodName && x.HasParametersAssignableTo(parameters.Select(y => y.GetType())));
         return methodInfo.Invoke(instance, parameters);
     }
 
@@ -96,13 +115,8 @@ public abstract class Tester
 
 public abstract class Tester<T> : Tester where T : class
 {
-    private readonly IDictionary<Type, Mock> _mocks = new Dictionary<Type, Mock>();
-
-    /// <summary>
-    /// Parameters that were used to instantiate <see cref="Instance"/>.
-    /// </summary>
-    protected IReadOnlyList<object> ConstructorParameters => _constructorParameters;
-    private readonly List<object> _constructorParameters = new();
+    private readonly Dictionary<Type, Mock> _mocks = new();
+    private readonly Dictionary<Type, List<object>> _serviceProviderRegistrations = new();
 
     private readonly List<object> _overridenConstructorParameters = new();
 
@@ -121,7 +135,7 @@ public abstract class Tester<T> : Tester where T : class
     {
         _instance = new Lazy<T>(() =>
         {
-            var instance = InstanceProvider.Create<T>(Dummy, _overridenConstructorParameters, (IReadOnlyDictionary<Type, Mock>)_mocks);
+            var instance = InstanceProvider.Create<T>(Dummy, _overridenConstructorParameters, _mocks);
 
             foreach (var mock in instance.Mocks)
             {
@@ -137,7 +151,7 @@ public abstract class Tester<T> : Tester where T : class
     {
         base.CleanupTest();
         _mocks.Clear();
-        _constructorParameters.Clear();
+        _serviceProviderRegistrations.Clear();
         _overridenConstructorParameters.Clear();
         ResetInstance();
     }
@@ -217,9 +231,20 @@ public abstract class Tester<T> : Tester where T : class
     {
         if (type == null) throw new ArgumentNullException(nameof(type));
         if (instance == null) throw new ArgumentNullException(nameof(instance));
+
+        if (!_serviceProviderRegistrations.TryGetValue(type, out var registrations))
+        {
+            registrations = new List<object>();
+            _serviceProviderRegistrations[type] = registrations;
+        }
+        registrations.Add(instance);
+
         GetMock<IServiceProvider>().Setup(x => x.GetService(type)).Returns(instance);
         var genericEnumerable = typeof(IEnumerable<>).MakeGenericType(type);
-        GetMock<IServiceProvider>().Setup(x => x.GetService(genericEnumerable)).Returns(new[] { instance });
+        var typedArray = Array.CreateInstance(type, registrations.Count);
+        for (var i = 0; i < registrations.Count; i++)
+            typedArray.SetValue(registrations[i], i);
+        GetMock<IServiceProvider>().Setup(x => x.GetService(genericEnumerable)).Returns(typedArray);
     }
 
     /// <summary>
@@ -229,7 +254,24 @@ public abstract class Tester<T> : Tester where T : class
     {
         if (parameters == null) throw new ArgumentNullException(nameof(parameters));
         if (_instance.IsValueCreated) throw new InvalidOperationException($"Can't override constructor parameters : the {nameof(ConstructWith)} method must be called before accessing the {nameof(Instance)} property.");
-        //TODO Ensure that the parameters passed correspond to those of T's constructor
+
+        var constructors = typeof(T).GetConstructors(BindingFlags.Public | BindingFlags.Instance);
+        var parameterTypes = parameters.Select(p => p.GetType()).ToArray();
+        var match = constructors.Any(c =>
+        {
+            var ctorParams = c.GetParameters();
+            if (ctorParams.Length < parameterTypes.Length) return false;
+            for (var i = 0; i < parameterTypes.Length; i++)
+            {
+                if (parameterTypes[i] == null) continue;
+                if (!ctorParams[i].ParameterType.IsAssignableFrom(parameterTypes[i])) return false;
+            }
+            return true;
+        });
+
+        if (!match)
+            throw new ArgumentException($"No constructor on {typeof(T).Name} accepts the provided parameter types: ({string.Join(", ", parameterTypes.Select(t => t?.Name ?? "null"))}).");
+
         _overridenConstructorParameters.AddRange(parameters);
     }
 
