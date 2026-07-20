@@ -11,11 +11,11 @@ public abstract class RecordTester<T> : Tester where T : class
         //Arrange
         var instance = Dummy.Create<T>();
 
-        //This constructor for a sealed record is private but it's protected for a non-sealed record
+        //This constructor for a sealed record is private, but it's protected for a non-sealed record
         var constructor = typeof(T).GetSingleConstructor(x => (x.IsPrivate || x.IsProtected()) && x.IsInstance() && x.HasParameters<T>());
 
         //Act
-        var result = (T)constructor.Invoke(new object?[] { instance });
+        var result = (T)constructor.Invoke([instance]);
 
         //Assert
         Assert.IsFalse(ReferenceEquals(instance, result));
