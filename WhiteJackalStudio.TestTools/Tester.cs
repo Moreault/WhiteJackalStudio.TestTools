@@ -12,8 +12,7 @@ public abstract class Tester
     /// <summary>
     /// Used to store information that is provided to unit tests.
     /// </summary>
-    // ReSharper disable once ReplaceAutoPropertyWithComputedProperty : Automatically set by MSTest, not manually.
-    public TestContext TestContext { get; } = null!;
+    public TestContext TestContext { get; set; } = null!;
 
     // ReSharper disable once UnusedMember.Global : Used by MSTest, not manually.
     public CancellationToken CancellationToken => TestContext.CancellationToken;

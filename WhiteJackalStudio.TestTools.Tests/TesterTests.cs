@@ -3,8 +3,6 @@ namespace WhiteJackalStudio.TestTools.Tests;
 [TestClass]
 public class TesterTests : Tester<SampleService>
 {
-    //--- Instance creation ---
-
     [TestMethod]
     public void Instance_ShouldBeCreated()
     {
@@ -19,8 +17,6 @@ public class TesterTests : Tester<SampleService>
 
         Assert.AreSame(first, second);
     }
-
-    //--- GetMock ---
 
     [TestMethod]
     public void GetMock_ShouldReturnMockForDependency()
@@ -48,8 +44,6 @@ public class TesterTests : Tester<SampleService>
 
         Assert.AreEqual("hello", result);
     }
-
-    //--- ConstructWith ---
 
     [TestMethod]
     public void ConstructWith_BeforeInstanceAccess_ShouldUseProvidedParameters()
@@ -84,8 +78,6 @@ public class TesterTests : Tester<SampleService>
         Assert.ThrowsExactly<ArgumentException>(() => ConstructWith("wrong", "types"));
     }
 
-    //--- Reflection: Fields ---
-
     [TestMethod]
     public void GetFieldValue_ShouldReturnPrivateFieldValue()
     {
@@ -103,8 +95,6 @@ public class TesterTests : Tester<SampleService>
         Assert.AreEqual("modified", value);
     }
 
-    //--- Reflection: Properties ---
-
     [TestMethod]
     public void GetPropertyValue_ShouldReturnPrivatePropertyValue()
     {
@@ -121,8 +111,6 @@ public class TesterTests : Tester<SampleService>
         var value = GetPropertyValue<int>("PrivateProperty");
         Assert.AreEqual(99, value);
     }
-
-    //--- Reflection: Methods ---
 
     [TestMethod]
     public void InvokeMethod_Parameterless_ShouldReturnResult()
@@ -166,8 +154,6 @@ public class TesterTests : Tester<SampleService>
 
         Assert.AreSame(options, result);
     }
-
-    //--- AddToServiceProvider ---
 
     [TestMethod]
     public void AddToServiceProvider_ByType_ShouldRegisterMockedService()
@@ -249,8 +235,6 @@ public class TesterTests : Tester<SampleService>
         Assert.ThrowsExactly<ArgumentNullException>(() => AddToServiceProvider(null!));
     }
 
-    //--- Lifecycle ---
-
     [TestMethod]
     public void Dummy_ShouldBeAvailableInTest()
     {
@@ -267,6 +251,12 @@ public class TesterTests : Tester<SampleService>
     public void JsonSerializerOptions_ShouldBeAvailableInTest()
     {
         Assert.IsNotNull(JsonSerializerOptions);
+    }
+
+    [TestMethod]
+    public void TestContext_Always_IsSet()
+    {
+        Assert.IsNotNull(TestContext);
     }
 
 }
